@@ -86,6 +86,33 @@ def _read_text(args: argparse.Namespace) -> str:
     return text
 
 
+def _resolve_dst(
+    args: argparse.Namespace, text: str, digest: str, out_dir: Path
+) -> Path:
+    """成品路径。`--out-name` 只能是纯文件名：带路径分隔符或 `..` 会写出 out_dir 之外。"""
+    name = args.out_name
+    if name is None:
+        name = f"{slugify(text)}.{digest[:12]}"
+    elif name in ("", ".", "..") or "/" in name or "\\" in name:
+        raise UsageError(f"--out-name 须是纯文件名（不含路径分隔符），收到 {name!r}")
+    return out_dir / f"{name}.mp3"
+
+
+def _teardown(server: str) -> None:
+    """收尾我们拉起的服务。失败只警告：音频可能已落盘，也不该盖住合成阶段的根因。"""
+    try:
+        r = ctl.stop_or_watch(server)
+    except Exception as e:  # noqa: BLE001 - lsof 缺失/超时等次生错误不得改写主流程结果
+        _print_err(
+            f"⚠️ 服务收尾失败（{type(e).__name__}: {e}）——可手动 `dub.py server stop`"
+        )
+        return
+    _print_err(
+        f"服务收尾：{r['action']}"
+        + (f"（watchdog 日志 {r['log']}）" if r["action"] == "watchdog" else "")
+    )
+
+
 def _final_voice_gate(args: argparse.Namespace) -> None:
     """RSI-040：index-tts 是本人声音克隆（生物特征），默认不启用，须具名授权。
 
@@ -104,8 +131,7 @@ def _say_edge(args: argparse.Namespace, text: str, out_dir: Path) -> dict:
     voice = dub_engine_edge.resolve_voice(args.voice, args.lang)
     rate = args.rate or dub_profiles.DEFAULT_RATE
     digest = say_digest("edge", [voice, rate, lang, tts_text(text, lang)])
-    name = args.out_name or f"{slugify(text)}.{digest[:12]}"
-    dst = out_dir / f"{name}.mp3"
+    dst = _resolve_dst(args, text, digest, out_dir)
     cached = dst.is_file() and dst.stat().st_size > 0 and not args.force
     if not cached:
         asyncio.run(dub_engine_edge.synth_text(text, voice, rate, dst, lang))
@@ -167,9 +193,11 @@ def _say_indextts(args: argparse.Namespace, text: str, out_dir: Path) -> dict:
         )
         for c in chunks
     ]
-    whole = say_digest("index-tts", [ref_sha, style, lang, *digests])
-    name = args.out_name or f"{slugify(text)}.{whole[:12]}"
-    dst = out_dir / f"{name}.mp3"
+    # 块间静音时长决定拼接产物，须入整段键（块级键 digests 不含它）
+    whole = say_digest(
+        "index-tts", [ref_sha, style, lang, f"gap={CHUNK_GAP_SEC!r}", *digests]
+    )
+    dst = _resolve_dst(args, text, whole, out_dir)
     if dst.is_file() and dst.stat().st_size > 0 and not args.force:
         return {"dst": dst, "cached": True, "style": style, "chunks": len(chunks)}
 
@@ -204,18 +232,14 @@ def _say_indextts(args: argparse.Namespace, text: str, out_dir: Path) -> dict:
                 server, chunks[i], str(ref), vec, alpha, df, lang, beams, sampling
             )
             if store is not None:
-                tmp = out_dir / f".{name}.c{i}.tmp.mp3"
+                tmp = out_dir / f".{dst.stem}.c{i}.tmp.mp3"
                 dub_audio.write_atomic(audio[i], tmp)  # type: ignore[arg-type]
                 ix.store_deposit(tmp, f"c{i}", digests[i], store, slug)
                 tmp.unlink(missing_ok=True)
         dub_audio.concat_mp3([a for a in audio if a is not None], CHUNK_GAP_SEC, dst)
     finally:
         if started and started["started"] and not args.keep_server:
-            r = ctl.stop_or_watch(server)
-            _print_err(
-                f"服务收尾：{r['action']}"
-                + (f"（watchdog 日志 {r['log']}）" if r["action"] == "watchdog" else "")
-            )
+            _teardown(server)
     return {"dst": dst, "cached": False, "style": style, "chunks": len(chunks)}
 
 

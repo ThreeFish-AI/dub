@@ -236,6 +236,26 @@ def _tail(path: Path, n: int = 15) -> str:
     return "\n".join(lines[-n:])
 
 
+def _reclaim(proc: subprocess.Popen, grace_sec: float = KILL_GRACE_SEC) -> None:
+    """回收**自己刚拉起、未能就绪**的子进程：SIGTERM → 逾期 SIGKILL，按进程组发。
+
+    `start_new_session=True` 使 pgid == pid，一并带走 uv 与其子 python。只动持有句柄且未
+    reap 的子进程（PID 不会被复用）；已退出则不发任何信号。不按名字、不按端口找人。
+    """
+    if proc.poll() is not None:
+        return
+    for sig, wait_sec in ((signal.SIGTERM, grace_sec), (signal.SIGKILL, 5.0)):
+        try:
+            os.killpg(proc.pid, sig)
+        except ProcessLookupError:
+            return
+        try:
+            proc.wait(timeout=wait_sec)
+            return
+        except subprocess.TimeoutExpired:
+            continue
+
+
 def start_server(
     server: str,
     *,
@@ -297,9 +317,17 @@ def start_server(
         ),
         encoding="utf-8",
     )
-    if not wait_healthy(server, startup_timeout):
+    ready = False
+    try:
+        ready = wait_healthy(server, startup_timeout)
+    finally:  # 超时或 Ctrl-C：别把半加载的 ~10 GiB 服务留成无人认领的孤儿
+        if not ready:
+            _reclaim(proc)
+            _state_path(port).unlink(missing_ok=True)
+    if not ready:
         raise ServerError(
-            f"服务 {startup_timeout:.0f}s 内未就绪。日志尾部（{log_path}）：\n{_tail(log_path)}"
+            f"服务 {startup_timeout:.0f}s 内未就绪，本次拉起的进程已清理。"
+            f"日志尾部（{log_path}）：\n{_tail(log_path)}"
         )
     return {
         "started": True,
