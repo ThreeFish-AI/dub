@@ -1,0 +1,98 @@
+[
+  {
+    "query": "把「今天我们拆解的是：Agent Skills」配成一段 mp3",
+    "should_trigger": true
+  },
+  {
+    "query": "给这段话配个音，输出成 mp3 文件",
+    "should_trigger": true
+  },
+  {
+    "query": "用我自己的克隆声音、story 风格朗读这句话并导出 mp3",
+    "should_trigger": true
+  },
+  {
+    "query": "把这段稿子转成语音，用 edge 的男声",
+    "should_trigger": true
+  },
+  {
+    "query": "文字转语音，我要一个 mp3，英文的，用 en-US-AndrewNeural",
+    "should_trigger": true
+  },
+  {
+    "query": "起一下本地的 IndexTTS 服务，看看它健康不健康",
+    "should_trigger": true
+  },
+  {
+    "query": "本地 index-tts 服务好像没停，帮我看一眼是谁在用它",
+    "should_trigger": true
+  },
+  {
+    "query": "配音有哪些风格可选？story 和 sunny-steady 区别是什么",
+    "should_trigger": true
+  },
+  {
+    "query": "我想连续配十几段话，别每次都重启 TTS 服务",
+    "should_trigger": true
+  },
+  {
+    "query": "dub 这个 skill 怎么用？输出的 mp3 会放在哪",
+    "should_trigger": true
+  },
+  {
+    "query": "用 index tts 2.5 把这段话读出来，存成音频文件",
+    "should_trigger": true
+  },
+  {
+    "query": "帮我给这句口播出个音频，语速稍微慢一点",
+    "should_trigger": true
+  },
+  {
+    "query": "把这篇论文做成动效图解科普视频",
+    "should_trigger": false
+  },
+  {
+    "query": "把整集视频的 narration.json 逐句配音并生成 manifest 给 Remotion 用",
+    "should_trigger": false
+  },
+  {
+    "query": "识别这段录音里说了什么，转成文字",
+    "should_trigger": false
+  },
+  {
+    "query": "把这个 mp4 转码成 webm 并压缩体积",
+    "should_trigger": false
+  },
+  {
+    "query": "剪掉这段音频的前 5 秒并加淡出",
+    "should_trigger": false
+  },
+  {
+    "query": "给我生成一段背景音乐，轻快一点的",
+    "should_trigger": false
+  },
+  {
+    "query": "把这篇文章翻译成英文",
+    "should_trigger": false
+  },
+  {
+    "query": "帮我润色一下这段口播稿，让它更口语化",
+    "should_trigger": false
+  },
+  {
+    "query": "精读这篇论文并写一份通俗拆解文档",
+    "should_trigger": false
+  },
+  {
+    "query": "部署一个 FastAPI 服务到 Cloud Run",
+    "should_trigger": false
+  },
+  {
+    "query": "帮我写一个 Python 脚本批量重命名文件",
+    "should_trigger": false
+  },
+  {
+    "query": "把这个 PPT 导出成 PDF",
+    "should_trigger": false
+  }
+]
