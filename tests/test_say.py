@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import io
 import json
+import subprocess
+from pathlib import Path
 
 import dub
 import dub_engine_indextts as ix
@@ -175,6 +177,25 @@ def test_out_name_is_respected(capsys, tmp_path, fake_edge):
         capsys, "--text", "你好", "--out-name", "intro", "--out-dir", str(tmp_path)
     )
     assert _receipt(out)["path"] == str(tmp_path / "intro.mp3")
+
+
+@pytest.mark.parametrize("name", ["../escape", "a/b", "/abs/x", "a\\b", "..", ".", ""])
+def test_out_name_cannot_leave_out_dir(capsys, tmp_path, fake_edge, name):
+    out_dir = tmp_path / "out"
+    rc, _, err = _run(
+        capsys, "--text", "你好", "--out-name", name, "--out-dir", str(out_dir)
+    )
+    assert rc == 2 and "--out-name" in err
+    assert fake_edge == [], "校验必须发生在联网合成之前"
+    assert not list(tmp_path.rglob("*.mp3")), "不得在任何位置落盘"
+
+
+@pytest.mark.parametrize("name", ["intro", "v1.2", "配音-01"])
+def test_out_name_allows_plain_names(capsys, tmp_path, fake_edge, name):
+    rc, out, _ = _run(
+        capsys, "--text", "你好", "--out-name", name, "--out-dir", str(tmp_path)
+    )
+    assert rc == 0 and _receipt(out)["path"] == str(tmp_path / f"{name}.mp3")
 
 
 # ---------------- index-tts：授权与前置校验 ----------------
@@ -435,6 +456,70 @@ def test_index_tts_server_error_becomes_usage_error(capsys, tmp_path, ref, monke
     monkeypatch.setattr(dub.ctl, "start_server", refuse)
     rc, _, err = _run(capsys, "--text", "你好。", *_ix_args(tmp_path, ref))
     assert rc == 2 and "占用" in err
+
+
+def test_index_tts_out_name_escape_is_rejected_before_service_start(
+    capsys, tmp_path, ref, fake_service
+):
+    rc, _, err = _run(
+        capsys, "--text", "你好。", *_ix_args(tmp_path, ref), "--out-name", "../x"
+    )
+    assert rc == 2 and "--out-name" in err
+    assert fake_service["start"] == 0, "名字不合法不该白拉起一个 10 GiB 的服务"
+
+
+# ---------------- index-tts：收尾失败不得吞掉已成功的结果 ----------------
+
+
+@pytest.mark.parametrize(
+    "exc",
+    [dub.ctl.ServerError("lsof 不可用"), subprocess.TimeoutExpired("lsof", 10)],
+    ids=["ServerError", "TimeoutExpired"],
+)
+def test_index_tts_teardown_failure_does_not_mask_success(
+    capsys, tmp_path, ref, fake_service, monkeypatch, exc
+):
+    def boom(server, **kw):
+        raise exc
+
+    monkeypatch.setattr(dub.ctl, "stop_or_watch", boom)
+    rc, out, err = _run(capsys, "--text", "你好。", *_ix_args(tmp_path, ref))
+    assert rc == 0, "音频已落盘，收尾失败只该警告"
+    r = _receipt(out)
+    assert r["cached"] is False and Path(r["path"]).is_file()
+    assert "服务收尾失败" in err
+
+
+def test_index_tts_teardown_failure_keeps_original_error(
+    capsys, tmp_path, ref, fake_service, monkeypatch
+):
+    def synth_fail(*a, **k):
+        raise ix.NonRetryableError("HTTP 400: 参考音频不存在")
+
+    def stop_fail(server, **kw):
+        raise dub.ctl.ServerError("lsof 不可用")
+
+    monkeypatch.setattr(dub.ix, "http_synthesize", synth_fail)
+    monkeypatch.setattr(dub.ctl, "stop_or_watch", stop_fail)
+    rc, _, err = _run(capsys, "--text", "你好。", *_ix_args(tmp_path, ref))
+    assert rc == 1 and "400" in err, "报的应是合成失败这个根因，而非收尾的次生错误"
+
+
+# ---------------- index-tts：整段缓存键 ----------------
+
+
+def test_index_tts_whole_cache_key_includes_chunk_gap(
+    capsys, tmp_path, ref, fake_service, monkeypatch
+):
+    """块间静音时长决定拼接产物；改它必须换整段文件名，不能命中旧成品。"""
+    args = ("--text", "这是第一句话。" * 12, *_ix_args(tmp_path, ref))
+    _, out, _ = _run(capsys, *args)
+    first = _receipt(out)
+    monkeypatch.setattr(dub, "CHUNK_GAP_SEC", 0.5)
+    _, out, _ = _run(capsys, *args)
+    second = _receipt(out)
+    assert second["cached"] is False and second["path"] != first["path"]
+    assert second["durationSec"] > first["durationSec"], "新静音时长必须真的生效"
 
 
 # ---------------- styles / server 子命令 ----------------

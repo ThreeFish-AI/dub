@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import signal
 import subprocess
 import sys
 import urllib.error
@@ -216,3 +217,93 @@ def test_start_server_missing_checkpoints_is_actionable(monkeypatch, tmp_path):
     monkeypatch.setattr(ctl, "port_listeners", lambda p: [])
     with pytest.raises(ctl.ServerError, match="checkpoints"):
         ctl.start_server("http://127.0.0.1:8766", root_override=str(tmp_path))
+
+
+# ---------------- start_server：启动失败时回收自己拉起的进程 ----------------
+
+
+class _FakeProc:
+    """假 Popen：poll 反映是否仍存活；前 term_ignored 次 wait 以超时作答（模拟忽略 SIGTERM）。"""
+
+    pid = 31337
+
+    def __init__(self, alive: bool = True, term_ignored: int = 0):
+        self.alive = alive
+        self._term_ignored = term_ignored
+
+    def poll(self):
+        return None if self.alive else 1
+
+    def wait(self, timeout=None):
+        if self._term_ignored > 0:
+            self._term_ignored -= 1
+            raise subprocess.TimeoutExpired("fake", timeout)
+        self.alive = False
+        return 0
+
+
+@pytest.fixture
+def spawn_env(monkeypatch, tmp_path):
+    """让 start_server 走到「拉起子进程」这一步：不健康、端口空闲、环境齐全，Popen 与 killpg 全 mock。"""
+    (tmp_path / "root" / "checkpoints").mkdir(parents=True)
+    sent: list[tuple[int, int]] = []
+    monkeypatch.setattr(ctl, "server_healthy", lambda s, timeout=5.0: False)
+    monkeypatch.setattr(ctl, "port_listeners", lambda p: [])
+    monkeypatch.setattr(ctl.shutil, "which", lambda name: "/usr/bin/uv")
+    monkeypatch.setattr(ctl.os, "killpg", lambda pgid, sig: sent.append((pgid, sig)))
+    return {"root": str(tmp_path / "root"), "sent": sent}
+
+
+def _start(spawn_env, monkeypatch, proc, ready):
+    monkeypatch.setattr(ctl.subprocess, "Popen", lambda argv, **kw: proc)
+    monkeypatch.setattr(ctl, "wait_healthy", ready)
+    return ctl.start_server(
+        "http://127.0.0.1:8766", root_override=spawn_env["root"], startup_timeout=1
+    )
+
+
+def test_start_server_reclaims_own_process_when_startup_times_out(
+    spawn_env, monkeypatch
+):
+    with pytest.raises(ctl.ServerError, match="未就绪"):
+        _start(spawn_env, monkeypatch, _FakeProc(), lambda *a, **k: False)
+    assert spawn_env["sent"] == [(_FakeProc.pid, signal.SIGTERM)], (
+        "按自己持有的进程组回收，不按名字找人"
+    )
+    assert not ctl._state_path(8766).exists(), "失败的拉起不得留下 state 文件"
+
+
+def test_start_server_does_not_signal_a_child_that_already_exited(
+    spawn_env, monkeypatch
+):
+    with pytest.raises(ctl.ServerError, match="未就绪"):
+        _start(spawn_env, monkeypatch, _FakeProc(alive=False), lambda *a, **k: False)
+    assert spawn_env["sent"] == [], "已退出的子进程 PID 可能被复用，绝不再发信号"
+    assert not ctl._state_path(8766).exists()
+
+
+def test_start_server_escalates_to_sigkill_when_sigterm_is_ignored(
+    spawn_env, monkeypatch
+):
+    with pytest.raises(ctl.ServerError):
+        _start(spawn_env, monkeypatch, _FakeProc(term_ignored=1), lambda *a, **k: False)
+    assert [sig for _, sig in spawn_env["sent"]] == [signal.SIGTERM, signal.SIGKILL]
+
+
+def test_start_server_reclaims_own_process_when_interrupted(spawn_env, monkeypatch):
+    """冷启动要等 1–2 分钟，期间 Ctrl-C 很常见——同样不能把半加载的服务留在后台。"""
+
+    def interrupted(*a, **k):
+        raise KeyboardInterrupt
+
+    with pytest.raises(KeyboardInterrupt):
+        _start(spawn_env, monkeypatch, _FakeProc(), interrupted)
+    assert spawn_env["sent"] == [(_FakeProc.pid, signal.SIGTERM)]
+    assert not ctl._state_path(8766).exists()
+
+
+def test_start_server_leaves_a_healthy_start_alone(spawn_env, monkeypatch):
+    r = _start(spawn_env, monkeypatch, _FakeProc(), lambda *a, **k: True)
+    assert r["started"] is True and r["pid"] == _FakeProc.pid
+    assert spawn_env["sent"] == [], "拉起成功不得发任何信号"
+    assert ctl._state_path(8766).is_file()
