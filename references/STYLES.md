@@ -15,7 +15,7 @@ index-tts 的「风格」是一组声学参数，叠加在本人声音样本之�
 
 edge 没有「风格」，只有音色 `--voice` 与语速 `--rate`。
 
-数据源是 `scripts/dub_profiles.py` 的 `STYLE_PRESETS`，与 vibe-video 同源，校准注释保留在代码里。运行 `dub.py styles` 看当前表。
+数据源是 `scripts/dub_profiles.py` 的 `STYLE_PRESETS`，vibe-video 经委托复用，校准注释保留在代码里。运行 `dub.py styles` 看当前表。
 
 ## 二、预设表
 
@@ -52,4 +52,4 @@ edge 没有「风格」，只有音色 `--voice` 与语速 `--rate`。
 3. 跨来源迁移参数要重新试听——上游 `emo_bias` 对 8 个维度严重不等权（sad/afraid=1.0 > happy/disgusted/melancholic=0.9375 > angry=0.875 > surprised=0.6875 > calm=0.5625），从社区抄来的 `(vec, alpha)` 在本管线里实际更强 16%–33%；
 4. 有效和护栏 Σvec×alpha ≤ 0.8 是本管线自定口径，服务端会 400。
 
-改动后 dub 与 vibe-video 两边的 `test_digest.py` 都要跑，黄金哈希不变才算没动缓存契约。
+改动后跑本仓 `tests/test_digest.py`，黄金哈希不变才算没动缓存契约；vibe-video 经委托自动继承同一份实现，不另设副本。

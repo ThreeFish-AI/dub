@@ -26,7 +26,7 @@ stdout 最后一行是回执 JSON：
 ## 核心能力
 
 - **一句话出 mp3**：文本来源 `--text` 或 `--text-file`；输出目录 `--out-dir`，缺省读 `DUB_OUTPUT_DIR`，两者皆无则大声退出，不替你选落点。
-- **风格即数据**：10 个风格预设（`story`、`sunny-steady`、`passionate` …），与 vibe-video 同源；`dub.py styles` 查看。
+- **风格即数据**：10 个风格预设（`story`、`sunny-steady`、`passionate` …），vibe-video 经委托复用；`dub.py styles` 查看。
 - **长文本不丢字**：index-tts 上游单请求约 36 秒封顶、超出的尾部会被静默吞掉，dub 按句界分块逐块合成再拼接，不需要 ffmpeg。
 - **缓存**：同文本同参数直接命中；index-tts 另有块级版本库，改一句只重合成变更的块。
 - **服务按需起停**：index-tts 服务未就绪时自动拉起，合成完只停**自己拉起的**实例；若仍被其他进程占用，不杀，起有界 watchdog 巡检到连续空闲再停。

@@ -22,7 +22,7 @@
 
 **后续防范**：
 
-- 机制原语只住 dub，vibe-video 不得再内联或另拷一份；两边的 `test_digest.py` 黄金哈希必须同值，任何一边变了意味着跨仓缓存契约被打破；
+- 机制原语只住 dub，vibe-video 不得再内联或另拷一份；黄金哈希与预设不变量的测试同样只住 dub（`tests/test_digest.py` 等），vibe-video 经委托自动继承，不留镜像副本；
 - dub 的库模块一律 `dub_` 前缀，由 `tests/test_module_names.py` 钉死，防止 vibe-video 把 dub 的 `scripts/` 插进 `sys.path` 后同名模块互相遮蔽；
 - 预设只增不改，改任一已上线预设的数值都会让已缓存音频全部失效。
 
