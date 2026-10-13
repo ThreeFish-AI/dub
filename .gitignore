@@ -6,8 +6,8 @@ uv.lock
 .conductor/
 .pytest_cache/
 .ruff_cache/
-# 自嵌套守卫：目标已是目录软链时 `ln -s`（缺 -n）会在仓内造出 dub/dub/…
-/dub
+# 自嵌套守卫：目标已是目录软链时 `ln -s`（缺 -n）会在仓内造出 vibe-tts/vibe-tts/…
+/vibe-tts
 # 声音样本与合成产物是生物特征 / 本地产物，永不入库
 *.wav
 *.mp3

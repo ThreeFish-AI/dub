@@ -29,9 +29,9 @@ import urllib.request
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from dub_paths import data_dir, index_tts_root, logs_dir  # noqa: E402
+from vibe_tts_paths import data_dir, index_tts_root, logs_dir  # noqa: E402
 
-SERVER_SCRIPT = Path(__file__).resolve().parent / "dub_tts_server.py"
+SERVER_SCRIPT = Path(__file__).resolve().parent / "vibe_tts_server.py"
 #: 监听者 cmdline 必含的标记；同时放行 vibe-video 旧名 tts_server.py 的存量实例。
 SERVER_MARK = "tts_server.py"
 
@@ -274,7 +274,9 @@ def start_server(
     if server_healthy(server):
         return {"started": False, "reused": True, "port": port}
     if not is_local_server(server):
-        raise ServerError(f"{server} 不可达，且不是本机地址——dub 只代为启动本机服务")
+        raise ServerError(
+            f"{server} 不可达，且不是本机地址——vibe-tts 只代为启动本机服务"
+        )
     pids = port_listeners(port)
     if pids:
         foreign = [p for p in pids if SERVER_MARK not in process_cmdline(p)]
@@ -292,7 +294,7 @@ def start_server(
     if not (root / "checkpoints").is_dir():
         raise ServerError(
             f"index-tts 环境不可用：{root}/checkpoints 不存在"
-            "（设 DUB_INDEX_TTS_ROOT 指向 checkout，部署见 references/ENGINES.md）"
+            "（设 VIBE_TTS_INDEX_TTS_ROOT 指向 checkout，部署见 references/ENGINES.md）"
         )
     if shutil.which("uv") is None:
         raise ServerError(
@@ -312,7 +314,7 @@ def start_server(
             {
                 "pid": proc.pid,
                 "startedAt": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
-                "by": "dub",
+                "by": "vibe-tts",
             }
         ),
         encoding="utf-8",
@@ -441,7 +443,7 @@ def watchdog_main(
             return 3
         if act == "timeout":
             _log(
-                f"等待超过 {max_wait:g}s 服务仍被占用，放弃——服务保留运行，请手动 `dub.py server stop`"
+                f"等待超过 {max_wait:g}s 服务仍被占用，放弃——服务保留运行，请手动 `vibe_tts.py server stop`"
             )
             return 4
         if act == "stop":
@@ -454,7 +456,7 @@ def watchdog_main(
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(
-        description="dub 服务控制（内部入口：watchdog 分离子进程用）"
+        description="vibe-tts 服务控制（内部入口：watchdog 分离子进程用）"
     )
     sub = ap.add_subparsers(dest="cmd", required=True)
     w = sub.add_parser("watchdog", help="巡检至空闲后停服")

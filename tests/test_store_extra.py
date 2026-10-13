@@ -10,7 +10,12 @@ import os
 import shutil
 from pathlib import Path
 
-from dub_engine_indextts import store_deposit, store_entry, store_has, store_restore
+from vibe_tts_engine_indextts import (
+    store_deposit,
+    store_entry,
+    store_has,
+    store_restore,
+)
 
 
 def _mk(root: Path, name: str, size: int = 64) -> Path:

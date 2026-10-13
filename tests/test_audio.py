@@ -9,7 +9,7 @@ import pytest
 np = pytest.importorskip("numpy")
 sf = pytest.importorskip("soundfile")
 
-from dub_audio import concat_mp3, write_atomic  # noqa: E402
+from vibe_tts_audio import concat_mp3, write_atomic  # noqa: E402
 
 SR = 22050
 

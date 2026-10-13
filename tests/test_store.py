@@ -4,8 +4,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import dub_engine_indextts as ix
-from dub_engine_indextts import store_deposit, store_entry, store_has, store_restore
+import vibe_tts_engine_indextts as ix
+from vibe_tts_engine_indextts import (
+    store_deposit,
+    store_entry,
+    store_has,
+    store_restore,
+)
 
 
 def _mk(root: Path, name: str, size: int = 64) -> Path:
@@ -74,21 +79,21 @@ def test_store_root_default_under_data_dir(tmp_path):
 
 
 def test_store_root_env_override(monkeypatch, tmp_path):
-    monkeypatch.setenv("DUB_STORE", str(tmp_path / "elsewhere"))
+    monkeypatch.setenv("VIBE_TTS_STORE", str(tmp_path / "elsewhere"))
     assert ix.store_root() == tmp_path / "elsewhere"
 
 
 def test_store_root_empty_env_disables(monkeypatch):
-    monkeypatch.setenv("DUB_STORE", "")
+    monkeypatch.setenv("VIBE_TTS_STORE", "")
     assert ix.store_root() is None
 
 
 def test_store_root_disabled_flag_wins(monkeypatch, tmp_path):
-    monkeypatch.setenv("DUB_STORE", str(tmp_path / "x"))
+    monkeypatch.setenv("VIBE_TTS_STORE", str(tmp_path / "x"))
     assert ix.store_root(disabled=True) is None
 
 
 def test_default_server_env_override(monkeypatch):
     assert ix.default_server() == "http://127.0.0.1:8766"
-    monkeypatch.setenv("DUB_INDEXTTS_SERVER", "http://127.0.0.1:9999")
+    monkeypatch.setenv("VIBE_TTS_INDEXTTS_SERVER", "http://127.0.0.1:9999")
     assert ix.default_server() == "http://127.0.0.1:9999"

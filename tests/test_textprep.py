@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import pytest
-from dub_textprep import close_chunk, split_chunks, split_sentences, tts_text
+from vibe_tts_textprep import close_chunk, split_chunks, split_sentences, tts_text
 
 
 def test_tts_text_zh_mapping():

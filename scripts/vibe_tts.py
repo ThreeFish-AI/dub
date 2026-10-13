@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
-"""dub —— 文本 + 风格 → .mp3 配音。双引擎：edge（预置音色，联网）/ index-tts（本地声音克隆）。
+"""vibe-tts —— 文本 + 风格 → .mp3 配音。双引擎：edge（预置音色，联网）/ index-tts（本地声音克隆）。
 
 用法（脚本当黑盒，先 --help）：
-  edge：      uv run --no-project --with edge-tts --with mutagen $T/scripts/dub.py say \
+  edge：      uv run --no-project --with edge-tts --with mutagen $T/scripts/vibe_tts.py say \
                   --text "今天我们拆解的是：Agent Skills"
-  index-tts： uv run --no-project --with mutagen --with soundfile --with numpy $T/scripts/dub.py say \
+  index-tts： uv run --no-project --with mutagen --with soundfile --with numpy $T/scripts/vibe_tts.py say \
                   --engine index-tts --final-voice --style story --ref <参考样本.wav> \
                   --expect-ref-sha1 <12 位> --text "今天我们拆解的是：Agent Skills"
-  风格列表：  python3 $T/scripts/dub.py styles
-  服务：      python3 $T/scripts/dub.py server start|stop|status|doctor
+  风格列表：  python3 $T/scripts/vibe_tts.py styles
+  服务：      python3 $T/scripts/vibe_tts.py server start|stop|status|doctor
 
-输出：<DUB_OUTPUT_DIR 或 --out-dir>/<名>.mp3；stdout **最后一行**是 JSON：
+输出：<VIBE_TTS_OUTPUT_DIR 或 --out-dir>/<名>.mp3；stdout **最后一行**是 JSON：
   {"path","durationSec","sampleRate","engine","style","cached","chunks"}
 契约见 references/CONTRACT.md。
 """
@@ -28,13 +28,13 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-import dub_audio  # noqa: E402
-import dub_engine_edge  # noqa: E402
-import dub_engine_indextts as ix  # noqa: E402
-import dub_paths  # noqa: E402
-import dub_profiles  # noqa: E402
-import dub_server_ctl as ctl  # noqa: E402
-from dub_textprep import split_chunks, tts_text  # noqa: E402
+import vibe_tts_audio  # noqa: E402
+import vibe_tts_engine_edge  # noqa: E402
+import vibe_tts_engine_indextts as ix  # noqa: E402
+import vibe_tts_paths  # noqa: E402
+import vibe_tts_profiles  # noqa: E402
+import vibe_tts_server_ctl as ctl  # noqa: E402
+from vibe_tts_textprep import split_chunks, tts_text  # noqa: E402
 
 ENGINES = ("edge", "index-tts")
 LANGS = {"zh": "ZH", "en": "EN"}
@@ -51,7 +51,7 @@ class UsageError(Exception):
 
 
 def slugify(text: str, limit: int = SLUG_MAX) -> str:
-    """文本 → 文件名友好的 slug：保留字母数字与汉字，其余折成 `-`；空则 `dub`。"""
+    """文本 → 文件名友好的 slug：保留字母数字与汉字，其余折成 `-`；空则 `vibe-tts`。"""
     out: list[str] = []
     for ch in unicodedata.normalize("NFKC", text):
         if ch.isalnum():
@@ -59,7 +59,7 @@ def slugify(text: str, limit: int = SLUG_MAX) -> str:
         elif out and out[-1] != "-":
             out.append("-")
     slug = "".join(out).strip("-")[:limit].strip("-")
-    return slug or "dub"
+    return slug or "vibe-tts"
 
 
 def sha1_12(path: Path) -> str:
@@ -69,7 +69,7 @@ def sha1_12(path: Path) -> str:
 
 def say_digest(engine: str, parts: list[str]) -> str:
     """say 产物的缓存键：任一影响音频的参数变化即换键。"""
-    return hashlib.sha1("|".join(["dub", engine, *parts]).encode()).hexdigest()
+    return hashlib.sha1("|".join(["vibe-tts", engine, *parts]).encode()).hexdigest()
 
 
 # ---------------- say ----------------
@@ -104,7 +104,7 @@ def _teardown(server: str) -> None:
         r = ctl.stop_or_watch(server)
     except Exception as e:  # noqa: BLE001 - lsof 缺失/超时等次生错误不得改写主流程结果
         _print_err(
-            f"⚠️ 服务收尾失败（{type(e).__name__}: {e}）——可手动 `dub.py server stop`"
+            f"⚠️ 服务收尾失败（{type(e).__name__}: {e}）——可手动 `vibe_tts.py server stop`"
         )
         return
     _print_err(
@@ -128,13 +128,13 @@ def _final_voice_gate(args: argparse.Namespace) -> None:
 
 def _say_edge(args: argparse.Namespace, text: str, out_dir: Path) -> dict:
     lang = LANGS[args.lang]
-    voice = dub_engine_edge.resolve_voice(args.voice, args.lang)
-    rate = args.rate or dub_profiles.DEFAULT_RATE
+    voice = vibe_tts_engine_edge.resolve_voice(args.voice, args.lang)
+    rate = args.rate or vibe_tts_profiles.DEFAULT_RATE
     digest = say_digest("edge", [voice, rate, lang, tts_text(text, lang)])
     dst = _resolve_dst(args, text, digest, out_dir)
     cached = dst.is_file() and dst.stat().st_size > 0 and not args.force
     if not cached:
-        asyncio.run(dub_engine_edge.synth_text(text, voice, rate, dst, lang))
+        asyncio.run(vibe_tts_engine_edge.synth_text(text, voice, rate, dst, lang))
     return {"dst": dst, "cached": cached, "style": voice, "chunks": 1}
 
 
@@ -154,10 +154,10 @@ def _say_indextts(args: argparse.Namespace, text: str, out_dir: Path) -> dict:
             "样本被换过会让音色整体漂移，先确认是不是原件"
         )
     style = args.style or "story"
-    preset = dub_profiles.STYLE_PRESETS.get(style)
+    preset = vibe_tts_profiles.STYLE_PRESETS.get(style)
     if preset is None:
         raise UsageError(
-            f"未知风格 {style!r}（可用：{', '.join(dub_profiles.STYLE_PRESETS)}）"
+            f"未知风格 {style!r}（可用：{', '.join(vibe_tts_profiles.STYLE_PRESETS)}）"
         )
     vec = preset["vec"]
     alpha, df, beams = preset["alpha"], preset["df"], preset.get("beams", 1)
@@ -233,10 +233,12 @@ def _say_indextts(args: argparse.Namespace, text: str, out_dir: Path) -> dict:
             )
             if store is not None:
                 tmp = out_dir / f".{dst.stem}.c{i}.tmp.mp3"
-                dub_audio.write_atomic(audio[i], tmp)  # type: ignore[arg-type]
+                vibe_tts_audio.write_atomic(audio[i], tmp)  # type: ignore[arg-type]
                 ix.store_deposit(tmp, f"c{i}", digests[i], store, slug)
                 tmp.unlink(missing_ok=True)
-        dub_audio.concat_mp3([a for a in audio if a is not None], CHUNK_GAP_SEC, dst)
+        vibe_tts_audio.concat_mp3(
+            [a for a in audio if a is not None], CHUNK_GAP_SEC, dst
+        )
     finally:
         if started and started["started"] and not args.keep_server:
             _teardown(server)
@@ -269,7 +271,7 @@ def _synth_chunk(server, text, ref, vec, alpha, df, lang, beams, sampling) -> by
             continue
         if fmt != "mp3":
             raise RuntimeError(
-                f"服务端返回 {fmt!r} 而非 mp3（缺编码器？先 `dub.py server doctor`）"
+                f"服务端返回 {fmt!r} 而非 mp3（缺编码器？先 `vibe_tts.py server doctor`）"
             )
         return data
     raise RuntimeError(f"合成失败（已重试 4 次）：{last}")
@@ -281,11 +283,11 @@ def _print_err(msg: str) -> None:
 
 def cmd_say(args: argparse.Namespace) -> int:
     text = _read_text(args)
-    out_dir = dub_paths.output_dir(args.out_dir)
+    out_dir = vibe_tts_paths.output_dir(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     res = (_say_edge if args.engine == "edge" else _say_indextts)(args, text, out_dir)
     dst: Path = res["dst"]
-    dur, sr = dub_audio.mp3_info(dst)
+    dur, sr = vibe_tts_audio.mp3_info(dst)
     print(
         json.dumps(
             {
@@ -310,14 +312,14 @@ def cmd_styles(_: argparse.Namespace) -> int:
     print(
         f"{'风格':<16}{'向量和':>7}{'alpha':>7}{'df':>6}{'beams':>7}{'seed':>7}  说明"
     )
-    for name, p in dub_profiles.STYLE_PRESETS.items():
+    for name, p in vibe_tts_profiles.STYLE_PRESETS.items():
         vec = p["vec"]
         s = f"{sum(vec):.2f}" if vec else "—"
         print(
             f"{name:<16}{s:>7}{p['alpha']:>7}{p['df']:>6}{p.get('beams', 1):>7}{str(p.get('seed', '')):>7}  {p['label']}"
         )
     print(
-        f"\nedge 缺省音色：{dict(dub_profiles.EDGE_VOICE_BY_LANG)}  缺省语速 {dub_profiles.DEFAULT_RATE}"
+        f"\nedge 缺省音色：{dict(vibe_tts_profiles.EDGE_VOICE_BY_LANG)}  缺省语速 {vibe_tts_profiles.DEFAULT_RATE}"
     )
     return 0
 
@@ -343,24 +345,24 @@ def cmd_server(args: argparse.Namespace) -> int:
 
 
 def _doctor(server: str) -> int:
-    root = dub_paths.index_tts_root()
+    root = vibe_tts_paths.index_tts_root()
     checks = [
         (
-            "DUB_OUTPUT_DIR",
-            bool(__import__("os").environ.get("DUB_OUTPUT_DIR")),
+            "VIBE_TTS_OUTPUT_DIR",
+            bool(__import__("os").environ.get("VIBE_TTS_OUTPUT_DIR")),
             "未设（say 需 --out-dir 或此变量）",
         ),
         (
             "index-tts checkout",
             (root / "checkpoints").is_dir(),
-            f"{root}/checkpoints 缺失（DUB_INDEX_TTS_ROOT）",
+            f"{root}/checkpoints 缺失（VIBE_TTS_INDEX_TTS_ROOT）",
         ),
         ("uv", shutil.which("uv") is not None, "uv 不在 PATH"),
         ("lsof", shutil.which("lsof") is not None, "lsof 不在 PATH"),
         (
             "服务健康",
             ctl.server_healthy(server),
-            f"{server}/health 不通（`dub.py server start` 可拉起）",
+            f"{server}/health 不通（`vibe_tts.py server start` 可拉起）",
         ),
     ]
     for mod, pip in (
@@ -381,7 +383,7 @@ def _doctor(server: str) -> int:
     for name, ok, hint in checks:
         print(f"{'✅' if ok else '⚠️ '} {name}" + ("" if ok else f" —— {hint}"))
         bad += 0 if ok else 1
-    print(f"\n数据目录：{dub_paths.data_dir()}")
+    print(f"\n数据目录：{vibe_tts_paths.data_dir()}")
     return 0  # doctor 只报告，不以未就绪为失败（edge 路径本就不需要 index-tts）
 
 
@@ -390,7 +392,7 @@ def _doctor(server: str) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(
-        prog="dub", description="文本 + 风格 → .mp3 配音（edge / index-tts）"
+        prog="vibe-tts", description="文本 + 风格 → .mp3 配音（edge / index-tts）"
     )
     sub = ap.add_subparsers(dest="cmd", required=True)
 
@@ -423,7 +425,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     s.add_argument(
         "--server",
-        help="[index-tts] 服务地址（默认 DUB_INDEXTTS_SERVER 或 http://127.0.0.1:8766）",
+        help="[index-tts] 服务地址（默认 VIBE_TTS_INDEXTTS_SERVER 或 http://127.0.0.1:8766）",
     )
     s.add_argument(
         "--keep-server",
@@ -431,7 +433,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="[index-tts] 合成后不停服务（默认停我们拉起的实例）",
     )
     s.add_argument("--no-store", action="store_true", help="[index-tts] 不读写版本库")
-    s.add_argument("--out-dir", help="输出目录（默认 DUB_OUTPUT_DIR）")
+    s.add_argument("--out-dir", help="输出目录（默认 VIBE_TTS_OUTPUT_DIR）")
     s.add_argument("--out-name", help="输出文件名（不含 .mp3；默认 文本slug.摘要12位）")
     s.add_argument("--force", action="store_true", help="忽略缓存强制重合成")
     s.set_defaults(func=cmd_say)

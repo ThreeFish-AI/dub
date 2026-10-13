@@ -7,7 +7,7 @@ import subprocess
 import sys
 import urllib.error
 
-import dub_server_ctl as ctl
+import vibe_tts_server_ctl as ctl
 import pytest
 
 
@@ -41,7 +41,7 @@ def test_server_argv_shape():
     assert argv[:3] == ["uv", "run", "--frozen"]
     for dep in ("fastapi", "uvicorn", "soundfile", "numpy", "lameenc"):
         assert argv[argv.index("--with", argv.index(dep) - 1) + 1] == dep
-    assert argv[argv.index("python") + 1].endswith("dub_tts_server.py")
+    assert argv[argv.index("python") + 1].endswith("vibe_tts_server.py")
     assert argv[argv.index("--port") + 1] == "8766"
     assert argv[argv.index("--indextts-version") + 1] == "2.5"
     assert argv[argv.index("--host") + 1] == "127.0.0.1"
@@ -55,9 +55,9 @@ def test_server_argv_optional_flags():
     assert argv[argv.index("--port") + 1] == "9000"
 
 
-def test_server_script_exists_and_is_dub_prefixed():
+def test_server_script_exists_and_is_vibe_tts_prefixed():
     assert ctl.SERVER_SCRIPT.is_file()
-    assert ctl.SERVER_SCRIPT.name == "dub_tts_server.py"
+    assert ctl.SERVER_SCRIPT.name == "vibe_tts_server.py"
     assert ctl.SERVER_MARK in ctl.SERVER_SCRIPT.name  # cmdline 复核标记必须能匹配本服务
 
 
@@ -155,7 +155,7 @@ def test_stop_or_watch_refuses_foreign_listener(monkeypatch):
 def test_stop_or_watch_idle_stops_immediately(monkeypatch):
     monkeypatch.setattr(ctl, "port_listeners", lambda p: [9])
     monkeypatch.setattr(
-        ctl, "process_cmdline", lambda pid: "python dub_tts_server.py --port 8766"
+        ctl, "process_cmdline", lambda pid: "python vibe_tts_server.py --port 8766"
     )
     monkeypatch.setattr(ctl, "is_busy", lambda *a, **k: False)
     stopped = []
@@ -167,7 +167,7 @@ def test_stop_or_watch_idle_stops_immediately(monkeypatch):
 def test_stop_or_watch_busy_spawns_watchdog_and_does_not_kill(monkeypatch):
     monkeypatch.setattr(ctl, "port_listeners", lambda p: [9])
     monkeypatch.setattr(
-        ctl, "process_cmdline", lambda pid: "python dub_tts_server.py --port 8766"
+        ctl, "process_cmdline", lambda pid: "python vibe_tts_server.py --port 8766"
     )
     monkeypatch.setattr(ctl, "is_busy", lambda *a, **k: True)
     stopped, spawned = [], []

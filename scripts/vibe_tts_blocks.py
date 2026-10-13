@@ -1,13 +1,13 @@
-"""块音频切分的纯函数——服务端（dub_tts_server.py）持有 mp3 编码前的 float32 PCM，
+"""块音频切分的纯函数——服务端（vibe_tts_server.py）持有 mp3 编码前的 float32 PCM，
 在此按句界静音切回 N 段。numpy 惰性 import，本模块 import 零第三方依赖。
 
-SAMPLING_PASSTHROUGH_DEFAULTS 从 dub_engine_indextts 重导出：服务端只需 import 本模块
+SAMPLING_PASSTHROUGH_DEFAULTS 从 vibe_tts_engine_indextts 重导出：服务端只需 import 本模块
 一个兄弟文件即可同时拿到采样默认值与切分函数（耦合面收敛到单点）。
 """
 
 from __future__ import annotations
 
-from dub_engine_indextts import SAMPLING_PASSTHROUGH_DEFAULTS  # noqa: F401
+from vibe_tts_engine_indextts import SAMPLING_PASSTHROUGH_DEFAULTS  # noqa: F401
 
 
 def frame_db(pcm, sr: int, hop_sec: float = 0.01, win_sec: float = 0.025):

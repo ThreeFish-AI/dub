@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import tomllib
 
-from dub_paths import skill_root
+from vibe_tts_paths import skill_root
 
 SKILL_ROOT = skill_root()
 

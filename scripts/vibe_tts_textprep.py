@@ -27,7 +27,7 @@ def tts_text(text: str, lang: str = "ZH", perform: bool = False) -> str:
 #
 # 为什么要分块：上游单请求 mel token 上限 1815（≈36 s），超出的尾部文本**静默不读**；
 # 且 >118 token 会被上游按标点二次切段并插 200 ms 硬静音。分块让每次请求落在
-# 「单段连续生成」的舒适区（story 档：≤3 句 / ≤90 字），再由 dub_audio.concat_mp3 拼回。
+# 「单段连续生成」的舒适区（story 档：≤3 句 / ≤90 字），再由 vibe_tts_audio.concat_mp3 拼回。
 # 与 vibe-video 的 plan_blocks 刻意分叉：后者靠台本的 blockStart/scene 硬边界与
 # DP 窗口控制改稿爆炸半径（视频特定）；这里只有一段纯文本，只需按句界贪心装箱。
 

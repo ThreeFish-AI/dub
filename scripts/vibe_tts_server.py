@@ -2,11 +2,11 @@
 """IndexTTS 声音克隆推理服务——运行于 index-tts 工程环境内的本地 HTTP 服务。
 
 - 位置约定：本脚本属于公共管线（SSOT），但必须在 index-tts checkout 的 uv 环境内运行
-  （默认 ~/tools/index-tts；可经 DUB_INDEX_TTS_ROOT 另指。torch/indextts 等
+  （默认 ~/tools/index-tts；可经 VIBE_TTS_INDEX_TTS_ROOT 另指。torch/indextts 等
   重依赖不进入本 skill）；
 - 启动（在 index-tts 根目录）：
     uv run --frozen --with fastapi --with uvicorn --with soundfile --with numpy --with lameenc \
-        python $T/scripts/dub_tts_server.py --model-dir checkpoints --port 8766
+        python $T/scripts/vibe_tts_server.py --model-dir checkpoints --port 8766
 - MPS 显存上限（--mps-mem-limit-gib，缺省 min(0.90×recommended, 16) GiB，缺省额度不足
   ~11 GiB 的小机型自动不设限，--use-qwen-emo 时随常驻上移至 ~12.5）：进程级水位线，防 torch
   默认 1.7×recommended（本机 ≈30 GiB，超 24 GB 物理统一内存）把系统内存拉爆致卡顿（RSI-017，
@@ -52,9 +52,9 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, field_validator
 
 # 客户端与本服务分属两个运行环境（skill 侧轻依赖 vs index-tts venv）；本服务按绝对路径运行，
-# sys.path[0] 即本目录——采样默认值等共享常量以 dub_engine_indextts 为 SSOT（经 dub_tts_blocks 重导出）。
+# sys.path[0] 即本目录——采样默认值等共享常量以 vibe_tts_engine_indextts 为 SSOT（经 vibe_tts_blocks 重导出）。
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from dub_tts_blocks import SAMPLING_PASSTHROUGH_DEFAULTS as SAMPLING_DEFAULTS  # noqa: E402
+from vibe_tts_blocks import SAMPLING_PASSTHROUGH_DEFAULTS as SAMPLING_DEFAULTS  # noqa: E402
 
 
 def ensure_indextts_import(index_tts_root: Path) -> None:
@@ -182,7 +182,7 @@ def encode_mp3(data: np.ndarray, sr: int) -> tuple[bytes, str]:
 
 EMO_LABELS = "happy,angry,sad,afraid,disgusted,melancholic,surprised,calm"
 
-# 上游自回归采样参数的默认值 —— SSOT 在 dub_engine_indextts（SAMPLING_PASSTHROUGH_DEFAULTS，
+# 上游自回归采样参数的默认值 —— SSOT 在 vibe_tts_engine_indextts（SAMPLING_PASSTHROUGH_DEFAULTS，
 # 锚点 indextts/infer_v2_5.py:731-739（HEAD 4f8792f），与 infer_v2.py:536-544 完全一致），
 # 本文件经文件头 import 引用（别名 SAMPLING_DEFAULTS 供下方请求模型取默认值）。
 # 此前这里持有一份手抄副本、靠注释约束「逐字一致」——两份 7/9 键字典已经漂移过一次
@@ -666,12 +666,12 @@ def _apply_mps_limit(
 
 
 def _block_reply(data, sr: int, req: SynthesizeRequest) -> tuple[dict, str]:
-    """块 PCM → {split, clips, cuts, seams}（切分本体是 dub_tts_blocks 的纯函数，numpy 在本进程可用）。
+    """块 PCM → {split, clips, cuts, seams}（切分本体是 vibe_tts_blocks 的纯函数，numpy 在本进程可用）。
 
     切分失败不抛错：返回 split="failed"+原因，客户端按逐句兜底（保持 HTTP 200——
     失败是可降级的业务结果，不是服务错误）。
     """
-    from dub_tts_blocks import (  # noqa: E402 - 与文件头同方向，运行时导入省冷启动
+    from vibe_tts_blocks import (  # noqa: E402 - 与文件头同方向，运行时导入省冷启动
         frame_db,
         plan_block_cuts,
         silence_runs,
@@ -809,7 +809,7 @@ async def synthesize(req: SynthesizeRequest):
                 )
                 data, sr = await asyncio.to_thread(_read_audio, wav_path)
                 if req.block:
-                    # 块模式：PCM 在此（float32、未过 mp3 编码），切分走 dub_tts_blocks 的纯函数
+                    # 块模式：PCM 在此（float32、未过 mp3 编码），切分走 vibe_tts_blocks 的纯函数
                     # （服务端持有 numpy；客户端 mutagen-only 且不得 import 兄弟模块）
                     audio, fmt = await asyncio.to_thread(_block_reply, data, sr, req)
                 else:

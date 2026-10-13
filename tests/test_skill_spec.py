@@ -24,7 +24,7 @@ from pathlib import Path
 
 import pytest
 
-from dub_paths import skill_root
+from vibe_tts_paths import skill_root
 
 SKILL_ROOT = skill_root()
 SKILL_MD = SKILL_ROOT / "SKILL.md"

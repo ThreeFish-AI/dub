@@ -7,9 +7,9 @@ repos:
     rev: v0.14.5
     hooks:
       - id: ruff
-        name: ruff lint (dub)
+        name: ruff lint (vibe-tts)
         args: [--fix]
         files: ^(scripts|tests)/
       - id: ruff-format
-        name: ruff format (dub)
+        name: ruff format (vibe-tts)
         files: ^(scripts|tests)/

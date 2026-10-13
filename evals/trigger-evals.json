@@ -36,7 +36,7 @@
     "should_trigger": true
   },
   {
-    "query": "dub 这个 skill 怎么用？输出的 mp3 会放在哪",
+    "query": "vibe-tts 这个 skill 怎么用？输出的 mp3 会放在哪",
     "should_trigger": true
   },
   {

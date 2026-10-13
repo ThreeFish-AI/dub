@@ -1,15 +1,15 @@
 """块切分、块摘要与 story 预设不变量——自 vibe-video tests/test_tts_blocks.py 迁入。
 
-只含被测对象是 dub 原语的用例（切分纯函数、digest 块后缀、story 预设）；
+只含被测对象是 vibe-tts 原语的用例（切分纯函数、digest 块后缀、story 预设）；
 依赖台本结构的块规划（plan_blocks 等）留在 vibe-video。
 """
 
 from __future__ import annotations
 
-from dub_engine_indextts import block_digest_suffix, digest_indextts
-from dub_profiles import STYLE_PRESETS
-from dub_textprep import tts_text
-from dub_tts_blocks import frame_db, plan_block_cuts, silence_runs, split_block_pcm
+from vibe_tts_engine_indextts import block_digest_suffix, digest_indextts
+from vibe_tts_profiles import STYLE_PRESETS
+from vibe_tts_textprep import tts_text
+from vibe_tts_blocks import frame_db, plan_block_cuts, silence_runs, split_block_pcm
 
 
 def test_plan_block_cuts_prefers_expected_positions():

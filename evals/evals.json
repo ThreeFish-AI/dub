@@ -1,16 +1,16 @@
 {
-  "skill_name": "dub",
+  "skill_name": "vibe-tts",
   "evals": [
     {
       "id": 1,
       "prompt": "帮我把「今天我们拆解的是：Agent Skills」配成一段 mp3 配音，声音就用默认的就行。输出目录环境变量已经配好了。",
-      "expected_output": "走默认的 edge 引擎，不提议也不使用 index-tts：用 `uv run --no-project --with edge-tts --with mutagen $T/scripts/dub.py say --text …` 合成，不带 --engine index-tts 也不带 --final-voice。读取 stdout 最后一行回执 JSON，把其中的 path 原样报给用户，并说明时长与采样率（edge 为 24 kHz）；不自行改写文案。",
+      "expected_output": "走默认的 edge 引擎，不提议也不使用 index-tts：用 `uv run --no-project --with edge-tts --with mutagen $T/scripts/vibe_tts.py say --text …` 合成，不带 --engine index-tts 也不带 --final-voice。读取 stdout 最后一行回执 JSON，把其中的 path 原样报给用户，并说明时长与采样率（edge 为 24 kHz）；不自行改写文案。",
       "files": [],
       "assertions": [
         "命令里没有 --engine index-tts，也没有 --final-voice",
         "没有向用户提议改用本人声音克隆或 story 风格",
         "最终回复里给出了回执 JSON 中的 path，且来自真实工具输出而非编造",
-        "没有手动 mkdir 输出目录或自己拼文件名，输出落点由 DUB_OUTPUT_DIR 决定"
+        "没有手动 mkdir 输出目录或自己拼文件名，输出落点由 VIBE_TTS_OUTPUT_DIR 决定"
       ]
     },
     {
@@ -21,7 +21,7 @@
       "assertions": [
         "命令带 --final-voice，且 --expect-ref-sha1 的值与用户给的指纹一致",
         "--style 为 story，--ref 指向用户给出的样本路径",
-        "没有手工执行 `uv run … dub_tts_server.py` 或 pkill 之类的服务起停",
+        "没有手工执行 `uv run … vibe_tts_server.py` 或 pkill 之类的服务起停",
         "没有读取样本 wav 的内容、没有把它贴进对话或复制到仓库内",
         "回复报告了回执里的 path 与 durationSec"
       ]
@@ -40,7 +40,7 @@
     {
       "id": 4,
       "prompt": "我想连着配十几段话，用我的声音 story 风格，别每次都重新加载模型。样本是 ~/voices/me-bright.wav（sha1 前 12 位 54b699cce97f）。",
-      "expected_output": "每次 say 加 --keep-server，避免反复冷启动；全部合成完后再执行 `python3 $T/scripts/dub.py server stop` 收尾。若 stop 回执显示 action 为 watchdog，说明实例仍被其他进程占用，已交给有界 watchdog 巡检，向用户如实报告而不是再手动 kill。全程带 --final-voice 与 --expect-ref-sha1，且不对服务做 pkill -f。",
+      "expected_output": "每次 say 加 --keep-server，避免反复冷启动；全部合成完后再执行 `python3 $T/scripts/vibe_tts.py server stop` 收尾。若 stop 回执显示 action 为 watchdog，说明实例仍被其他进程占用，已交给有界 watchdog 巡检，向用户如实报告而不是再手动 kill。全程带 --final-voice 与 --expect-ref-sha1，且不对服务做 pkill -f。",
       "files": [],
       "assertions": [
         "每条 say 都带了 --keep-server",
@@ -52,11 +52,11 @@
     {
       "id": 5,
       "prompt": "把这整集视频的 narration.json 逐句配音，生成 manifest，让 Remotion 用。",
-      "expected_output": "识别这是整集视频流水线的逐句配音与时间轴 manifest，不属于 dub 的职责（dub 只做单段文本到 mp3）：告知用户这件事走 vibe-video 的配音阶段，不用 dub say 硬凑，也不自己写批处理脚本绕过。",
+      "expected_output": "识别这是整集视频流水线的逐句配音与时间轴 manifest，不属于 vibe-tts 的职责（vibe-tts 只做单段文本到 mp3）：告知用户这件事走 vibe-video 的配音阶段，不用 vibe-tts say 硬凑，也不自己写批处理脚本绕过。",
       "files": [],
       "assertions": [
-        "明确指出该任务属于 vibe-video 而非 dub",
-        "没有用 dub.py say 循环合成整集来替代 vibe-video 的配音阶段"
+        "明确指出该任务属于 vibe-video 而非 vibe-tts",
+        "没有用 vibe_tts.py say 循环合成整集来替代 vibe-video 的配音阶段"
       ]
     }
   ]

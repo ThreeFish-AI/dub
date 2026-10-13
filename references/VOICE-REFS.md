@@ -18,7 +18,7 @@ index-tts 把说话人的音色**和韵律**一起克隆，样本比参数更关
 
 ## 二、指纹校验
 
-用 `--expect-ref-sha1 <sha1 前 12 位>` 让 dub 在合成前核对样本，不符即拒绝。取指纹：
+用 `--expect-ref-sha1 <sha1 前 12 位>` 让 vibe-tts 在合成前核对样本，不符即拒绝。取指纹：
 
 ```bash
 shasum <样本.wav> | cut -c1-12

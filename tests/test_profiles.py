@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 
 import pytest
-from dub_profiles import (
+from vibe_tts_profiles import (
     DEFAULT_RATE,
     DEFAULT_VOICE,
     EDGE_VOICE_BY_LANG,
