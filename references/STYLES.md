@@ -15,7 +15,7 @@ index-tts 的「风格」是一组声学参数，叠加在本人声音样本之�
 
 edge 没有「风格」，只有音色 `--voice` 与语速 `--rate`。
 
-数据源是 `scripts/dub_profiles.py` 的 `STYLE_PRESETS`，vibe-video 经委托复用，校准注释保留在代码里。运行 `dub.py styles` 看当前表。
+数据源是 `scripts/vibe_tts_profiles.py` 的 `STYLE_PRESETS`，vibe-video 经委托复用，校准注释保留在代码里。运行 `vibe_tts.py styles` 看当前表。
 
 ## 二、预设表
 
