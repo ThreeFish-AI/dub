@@ -16,7 +16,7 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-from dub_paths import data_dir
+from vibe_tts_paths import data_dir
 
 CONCURRENCY_INDEXTTS = 1  # 服务端串行锁推理；>1 会在锁后排队，排队时长计入客户端超时
 HTTP_TIMEOUT = 600  # MPS fp32 长句可达数分钟；须覆盖队列等待
@@ -24,8 +24,8 @@ DEFAULT_SERVER = "http://127.0.0.1:8766"
 
 
 def default_server() -> str:
-    """服务地址：DUB_INDEXTTS_SERVER 环境变量 → 本机缺省。"""
-    return os.environ.get("DUB_INDEXTTS_SERVER") or DEFAULT_SERVER
+    """服务地址：VIBE_TTS_INDEXTTS_SERVER 环境变量 → 本机缺省。"""
+    return os.environ.get("VIBE_TTS_INDEXTTS_SERVER") or DEFAULT_SERVER
 
 
 # 上游自回归采样参数的默认值 —— 已知副本，锚点 indextts/infer_v2_5.py:731-739（HEAD 4f8792f）；
@@ -223,13 +223,13 @@ def digest_indextts(
 # 条目路径 <slug>/<sid>.<digest12>.mp3 + 同名 .sha 邻档存全量 digest（防 12 位前缀巧合）。
 # 库根整体搬迁零失效（mv 即迁移）。库是加速器不是门：失败只 WARN。
 
-STORE_ENV = "DUB_STORE"
+STORE_ENV = "VIBE_TTS_STORE"
 
 
 def store_root(disabled: bool = False) -> Path | None:
-    """版本库根目录；disabled 或 DUB_STORE 置空串时返回 None（全程直通不落盘）。
+    """版本库根目录；disabled 或 VIBE_TTS_STORE 置空串时返回 None（全程直通不落盘）。
 
-    解析顺序：DUB_STORE → <DUB_DATA_DIR>/tts-store。"""
+    解析顺序：VIBE_TTS_STORE → <VIBE_TTS_DATA_DIR>/tts-store。"""
     if disabled:
         return None
     env = os.environ.get(STORE_ENV)

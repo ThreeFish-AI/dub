@@ -1,18 +1,18 @@
 """digest 黄金值与预设不变量的补充用例——自 vibe-video tests/test_digest.py 迁入。
 
 「TTS 缓存零失效」的守门人：钉死 digest_indextts 的「未使用即省略」后缀规则。机制住
-dub 仓，这些用例随之迁入，vibe-video 不再保留副本。与 test_digest.py（黄金哈希）互补。
+vibe-tts 仓，这些用例随之迁入，vibe-video 不再保留副本。与 test_digest.py（黄金哈希）互补。
 """
 
 from __future__ import annotations
 
-from dub_engine_edge import digest_edge  # noqa: F401
+from vibe_tts_engine_edge import digest_edge  # noqa: F401
 import pytest
-from dub_engine_indextts import (
+from vibe_tts_engine_indextts import (
     digest_indextts,
     sampling_suffix,
 )
-from dub_profiles import STYLE_PRESETS
+from vibe_tts_profiles import STYLE_PRESETS
 
 
 def test_digest_indextts_golden():

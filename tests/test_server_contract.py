@@ -1,7 +1,7 @@
 """vendored 服务端的 HTTP 契约：不加载模型（TestClient 不进 lifespan），直接注入 STATE。
 
 覆盖的是服务端「在碰模型之前」就拒绝请求的全部分支，以及 /health 的形状——
-这些是客户端（dub 与 vibe-video）依赖的契约面，改动即意味着两边都要跟着变。
+这些是客户端（vibe-tts 与 vibe-video）依赖的契约面，改动即意味着两边都要跟着变。
 """
 
 from __future__ import annotations
@@ -15,7 +15,7 @@ pytest.importorskip("httpx")
 pytest.importorskip("numpy")
 pytest.importorskip("soundfile")
 
-from dub_tts_server import STATE, app  # noqa: E402
+from vibe_tts_server import STATE, app  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 
 client = TestClient(app)  # 不用 with：避免触发 lifespan（加载模型）
@@ -126,7 +126,7 @@ def test_400_effective_sum_over_guard(ready):
 
 
 def test_story_effective_sum_is_within_guard():
-    from dub_profiles import STYLE_PRESETS
+    from vibe_tts_profiles import STYLE_PRESETS
 
     p = STYLE_PRESETS["story"]
     assert sum(p["vec"]) * p["alpha"] < 0.8
@@ -178,10 +178,10 @@ def test_missing_required_fields_is_422():
 # ---------------- 与客户端共享的常量 ----------------
 
 
-def test_server_sampling_defaults_come_from_dub_engine():
+def test_server_sampling_defaults_come_from_vibe_tts_engine():
     """服务端字段默认值与客户端「是否被改过」判定必须是同一份数据。"""
-    import dub_engine_indextts as ix
-    import dub_tts_server as srv
+    import vibe_tts_engine_indextts as ix
+    import vibe_tts_server as srv
 
     assert srv.SAMPLING_DEFAULTS is ix.SAMPLING_PASSTHROUGH_DEFAULTS
     d = srv.SynthesizeRequest(text="x", ref_path="/x")
@@ -193,7 +193,7 @@ def test_server_has_no_dependency_on_vibe_video_modules():
     import ast
     import pathlib
 
-    src = pathlib.Path(__file__).resolve().parents[1] / "scripts" / "dub_tts_server.py"
+    src = pathlib.Path(__file__).resolve().parents[1] / "scripts" / "vibe_tts_server.py"
     tree = ast.parse(src.read_text(encoding="utf-8"))
     mods = {
         (n.module or "").split(".")[0]
@@ -206,4 +206,4 @@ def test_server_has_no_dependency_on_vibe_video_modules():
         for a in n.names
     }
     assert "tts" not in mods, "服务端不得再依赖 vibe-video 的 tts.py"
-    assert {m for m in mods if m.startswith("dub_")} <= {"dub_tts_blocks"}
+    assert {m for m in mods if m.startswith("vibe_tts_")} <= {"vibe_tts_blocks"}

@@ -1,6 +1,6 @@
 """缓存摘要的黄金哈希——缓存稳定性契约的唯一钉点。
 
-这里任何一个哈希变了，意味着已缓存的音频全部失效。vibe-video 的 `tts.py` 经 dub 再导出
+这里任何一个哈希变了，意味着已缓存的音频全部失效。vibe-video 的 `tts.py` 经 vibe-tts 再导出
 同一份实现，自动继承这些保证，自己不再保留副本。
 """
 
@@ -9,8 +9,8 @@ from __future__ import annotations
 import hashlib
 
 import pytest
-from dub_engine_edge import digest_edge
-from dub_engine_indextts import digest_indextts, sampling_suffix
+from vibe_tts_engine_edge import digest_edge
+from vibe_tts_engine_indextts import digest_indextts, sampling_suffix
 
 VEC = (0.95, 0, 0, 0, 0, 0, 0.02, 0.03)
 ARGS = ("3ed0d9d60d4b", "passionate", VEC, 0.7, 0.97, "ZH", "indextts", "测试句。")
@@ -91,7 +91,7 @@ def test_any_sampling_change_invalidates_cache():
 
 
 def test_block_suffix_is_versioned_and_stable():
-    from dub_engine_indextts import block_digest_suffix
+    from vibe_tts_engine_indextts import block_digest_suffix
 
     a = block_digest_suffix(["甲。", "乙。"], 0.32, 0.18)
     assert a == block_digest_suffix(["甲。", "乙。"], 0.32, 0.18)

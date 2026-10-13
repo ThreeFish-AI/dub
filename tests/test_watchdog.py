@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 import pytest
-from dub_server_ctl import decide, parse_lsof_clients
+from vibe_tts_server_ctl import decide, parse_lsof_clients
 
 PORT = 8766
 

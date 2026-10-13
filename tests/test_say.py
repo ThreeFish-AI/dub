@@ -1,4 +1,4 @@
-"""dub.py say 的编排：授权闸、输出目录、缓存、分块与服务收尾——网络与服务全部 mock。"""
+"""vibe_tts.py say 的编排：授权闸、输出目录、缓存、分块与服务收尾——网络与服务全部 mock。"""
 
 from __future__ import annotations
 
@@ -7,8 +7,8 @@ import json
 import subprocess
 from pathlib import Path
 
-import dub
-import dub_engine_indextts as ix
+import vibe_tts
+import vibe_tts_engine_indextts as ix
 import pytest
 
 np = pytest.importorskip("numpy")
@@ -28,7 +28,7 @@ def _mp3(seconds: float = 0.5) -> bytes:
 
 
 def _run(capsys, *argv):
-    rc = dub.main(["say", *argv])
+    rc = vibe_tts.main(["say", *argv])
     out, err = capsys.readouterr()
     return rc, out, err
 
@@ -45,20 +45,20 @@ def _receipt(out: str) -> dict:
     [
         ("今天我们拆解的是：Agent Skills", "今天我们拆解的是-agent-skills"),
         ("  Hello,   World!  ", "hello-world"),
-        ("！！！", "dub"),
-        ("", "dub"),
-        ("甲" * 100, "甲" * dub.SLUG_MAX),
+        ("！！！", "vibe-tts"),
+        ("", "vibe-tts"),
+        ("甲" * 100, "甲" * vibe_tts.SLUG_MAX),
     ],
 )
 def test_slugify(text, slug):
-    assert dub.slugify(text) == slug
+    assert vibe_tts.slugify(text) == slug
 
 
 def test_say_digest_changes_with_any_part():
-    base = dub.say_digest("edge", ["v", "r", "ZH", "t"])
-    assert base == dub.say_digest("edge", ["v", "r", "ZH", "t"])
-    assert base != dub.say_digest("edge", ["v2", "r", "ZH", "t"])
-    assert base != dub.say_digest("index-tts", ["v", "r", "ZH", "t"])
+    base = vibe_tts.say_digest("edge", ["v", "r", "ZH", "t"])
+    assert base == vibe_tts.say_digest("edge", ["v", "r", "ZH", "t"])
+    assert base != vibe_tts.say_digest("edge", ["v2", "r", "ZH", "t"])
+    assert base != vibe_tts.say_digest("index-tts", ["v", "r", "ZH", "t"])
 
 
 def test_sha1_12_matches_shasum(tmp_path):
@@ -66,7 +66,7 @@ def test_sha1_12_matches_shasum(tmp_path):
 
     f = tmp_path / "a.wav"
     f.write_bytes(b"hello")
-    assert dub.sha1_12(f) == hashlib.sha1(b"hello").hexdigest()[:12]
+    assert vibe_tts.sha1_12(f) == hashlib.sha1(b"hello").hexdigest()[:12]
 
 
 # ---------------- 公共：文本与输出目录 ----------------
@@ -79,8 +79,8 @@ def test_empty_text_is_usage_error(capsys, tmp_path):
 
 def test_missing_output_dir_exits_loudly(capsys):
     with pytest.raises(SystemExit) as e:
-        dub.main(["say", "--text", "你好"])
-    assert "DUB_OUTPUT_DIR" in str(e.value)
+        vibe_tts.main(["say", "--text", "你好"])
+    assert "VIBE_TTS_OUTPUT_DIR" in str(e.value)
 
 
 def test_text_file_is_read(capsys, tmp_path, monkeypatch):
@@ -92,7 +92,7 @@ def test_text_file_is_read(capsys, tmp_path, monkeypatch):
         seen["text"] = text
         dst.write_bytes(_mp3())
 
-    monkeypatch.setattr(dub.dub_engine_edge, "synth_text", fake)
+    monkeypatch.setattr(vibe_tts.vibe_tts_engine_edge, "synth_text", fake)
     rc, out, _ = _run(capsys, "--text-file", str(f), "--out-dir", str(tmp_path / "o"))
     assert rc == 0 and seen["text"] == "来自文件的文本"
 
@@ -108,7 +108,7 @@ def fake_edge(monkeypatch):
         calls.append({"text": text, "voice": voice, "rate": rate, "lang": lang})
         dst.write_bytes(_mp3())
 
-    monkeypatch.setattr(dub.dub_engine_edge, "synth_text", fake)
+    monkeypatch.setattr(vibe_tts.vibe_tts_engine_edge, "synth_text", fake)
     return calls
 
 
@@ -295,9 +295,9 @@ def fake_service(monkeypatch):
         )
         return _mp3(0.5), "mp3"
 
-    monkeypatch.setattr(dub.ctl, "start_server", start_server)
-    monkeypatch.setattr(dub.ctl, "stop_or_watch", stop_or_watch)
-    monkeypatch.setattr(dub.ix, "http_synthesize", http_synthesize)
+    monkeypatch.setattr(vibe_tts.ctl, "start_server", start_server)
+    monkeypatch.setattr(vibe_tts.ctl, "stop_or_watch", stop_or_watch)
+    monkeypatch.setattr(vibe_tts.ix, "http_synthesize", http_synthesize)
     return log
 
 
@@ -408,7 +408,7 @@ def test_index_tts_stops_server_even_when_synthesis_fails(
     def boom(*a, **k):
         raise ix.NonRetryableError("HTTP 400: 参考音频不存在")
 
-    monkeypatch.setattr(dub.ix, "http_synthesize", boom)
+    monkeypatch.setattr(vibe_tts.ix, "http_synthesize", boom)
     rc, _, err = _run(capsys, "--text", "你好。", *_ix_args(tmp_path, ref))
     assert rc == 1 and "400" in err
     assert fake_service["stop"] == 1, "失败也必须收尾我们拉起的服务"
@@ -417,7 +417,9 @@ def test_index_tts_stops_server_even_when_synthesis_fails(
 def test_index_tts_rejects_non_mp3_response(
     capsys, tmp_path, ref, fake_service, monkeypatch
 ):
-    monkeypatch.setattr(dub.ix, "http_synthesize", lambda *a, **k: (b"RIFF", "wav"))
+    monkeypatch.setattr(
+        vibe_tts.ix, "http_synthesize", lambda *a, **k: (b"RIFF", "wav")
+    )
     rc, _, err = _run(capsys, "--text", "你好。", *_ix_args(tmp_path, ref))
     assert rc == 1 and "wav" in err
 
@@ -434,7 +436,7 @@ def test_index_tts_retries_transient_errors_but_not_4xx(
             raise RuntimeError("连接失败")
         return _mp3(0.5), "mp3"
 
-    monkeypatch.setattr(dub.ix, "http_synthesize", flaky)
+    monkeypatch.setattr(vibe_tts.ix, "http_synthesize", flaky)
     rc, _, _ = _run(capsys, "--text", "你好。", *_ix_args(tmp_path, ref))
     assert rc == 0 and attempts["n"] == 3
 
@@ -444,16 +446,16 @@ def test_index_tts_retries_transient_errors_but_not_4xx(
         attempts["n"] += 1
         raise ix.NonRetryableError("HTTP 400: x")
 
-    monkeypatch.setattr(dub.ix, "http_synthesize", fatal)
+    monkeypatch.setattr(vibe_tts.ix, "http_synthesize", fatal)
     _run(capsys, "--text", "另一句。", *_ix_args(tmp_path, ref))
     assert attempts["n"] == 1, "4xx 不可重试"
 
 
 def test_index_tts_server_error_becomes_usage_error(capsys, tmp_path, ref, monkeypatch):
     def refuse(server, **kw):
-        raise dub.ctl.ServerError("端口 8766 被非 tts 服务的进程占用")
+        raise vibe_tts.ctl.ServerError("端口 8766 被非 tts 服务的进程占用")
 
-    monkeypatch.setattr(dub.ctl, "start_server", refuse)
+    monkeypatch.setattr(vibe_tts.ctl, "start_server", refuse)
     rc, _, err = _run(capsys, "--text", "你好。", *_ix_args(tmp_path, ref))
     assert rc == 2 and "占用" in err
 
@@ -473,7 +475,7 @@ def test_index_tts_out_name_escape_is_rejected_before_service_start(
 
 @pytest.mark.parametrize(
     "exc",
-    [dub.ctl.ServerError("lsof 不可用"), subprocess.TimeoutExpired("lsof", 10)],
+    [vibe_tts.ctl.ServerError("lsof 不可用"), subprocess.TimeoutExpired("lsof", 10)],
     ids=["ServerError", "TimeoutExpired"],
 )
 def test_index_tts_teardown_failure_does_not_mask_success(
@@ -482,7 +484,7 @@ def test_index_tts_teardown_failure_does_not_mask_success(
     def boom(server, **kw):
         raise exc
 
-    monkeypatch.setattr(dub.ctl, "stop_or_watch", boom)
+    monkeypatch.setattr(vibe_tts.ctl, "stop_or_watch", boom)
     rc, out, err = _run(capsys, "--text", "你好。", *_ix_args(tmp_path, ref))
     assert rc == 0, "音频已落盘，收尾失败只该警告"
     r = _receipt(out)
@@ -497,10 +499,10 @@ def test_index_tts_teardown_failure_keeps_original_error(
         raise ix.NonRetryableError("HTTP 400: 参考音频不存在")
 
     def stop_fail(server, **kw):
-        raise dub.ctl.ServerError("lsof 不可用")
+        raise vibe_tts.ctl.ServerError("lsof 不可用")
 
-    monkeypatch.setattr(dub.ix, "http_synthesize", synth_fail)
-    monkeypatch.setattr(dub.ctl, "stop_or_watch", stop_fail)
+    monkeypatch.setattr(vibe_tts.ix, "http_synthesize", synth_fail)
+    monkeypatch.setattr(vibe_tts.ctl, "stop_or_watch", stop_fail)
     rc, _, err = _run(capsys, "--text", "你好。", *_ix_args(tmp_path, ref))
     assert rc == 1 and "400" in err, "报的应是合成失败这个根因，而非收尾的次生错误"
 
@@ -515,7 +517,7 @@ def test_index_tts_whole_cache_key_includes_chunk_gap(
     args = ("--text", "这是第一句话。" * 12, *_ix_args(tmp_path, ref))
     _, out, _ = _run(capsys, *args)
     first = _receipt(out)
-    monkeypatch.setattr(dub, "CHUNK_GAP_SEC", 0.5)
+    monkeypatch.setattr(vibe_tts, "CHUNK_GAP_SEC", 0.5)
     _, out, _ = _run(capsys, *args)
     second = _receipt(out)
     assert second["cached"] is False and second["path"] != first["path"]
@@ -526,30 +528,30 @@ def test_index_tts_whole_cache_key_includes_chunk_gap(
 
 
 def test_styles_lists_every_preset(capsys):
-    assert dub.main(["styles"]) == 0
+    assert vibe_tts.main(["styles"]) == 0
     out = capsys.readouterr().out
-    for name in dub.dub_profiles.STYLE_PRESETS:
+    for name in vibe_tts.vibe_tts_profiles.STYLE_PRESETS:
         assert name in out
     assert "zh-CN-YunxiNeural" in out
 
 
 def test_server_status_when_down(capsys, monkeypatch):
-    monkeypatch.setattr(dub.ctl, "health", lambda s, timeout=5.0: None)
-    monkeypatch.setattr(dub.ctl, "port_listeners", lambda p: [])
-    assert dub.main(["server", "status"]) == 0
+    monkeypatch.setattr(vibe_tts.ctl, "health", lambda s, timeout=5.0: None)
+    monkeypatch.setattr(vibe_tts.ctl, "port_listeners", lambda p: [])
+    assert vibe_tts.main(["server", "status"]) == 0
     body = json.loads(capsys.readouterr().out)
     assert body["healthy"] is False and body["listeners"] == []
 
 
 def test_server_start_error_returns_1(capsys, monkeypatch):
     def refuse(server, **kw):
-        raise dub.ctl.ServerError("nope")
+        raise vibe_tts.ctl.ServerError("nope")
 
-    monkeypatch.setattr(dub.ctl, "start_server", refuse)
-    assert dub.main(["server", "start"]) == 1
+    monkeypatch.setattr(vibe_tts.ctl, "start_server", refuse)
+    assert vibe_tts.main(["server", "start"]) == 1
     assert "nope" in capsys.readouterr().err
 
 
 def test_server_doctor_never_fails(capsys, monkeypatch):
-    monkeypatch.setattr(dub.ctl, "server_healthy", lambda s, timeout=5.0: False)
-    assert dub.main(["server", "doctor"]) == 0
+    monkeypatch.setattr(vibe_tts.ctl, "server_healthy", lambda s, timeout=5.0: False)
+    assert vibe_tts.main(["server", "doctor"]) == 0

@@ -12,8 +12,8 @@ import asyncio
 import hashlib
 from pathlib import Path
 
-from dub_profiles import DEFAULT_RATE, DEFAULT_VOICE, EDGE_VOICE_BY_LANG
-from dub_textprep import tts_text
+from vibe_tts_profiles import DEFAULT_RATE, DEFAULT_VOICE, EDGE_VOICE_BY_LANG
+from vibe_tts_textprep import tts_text
 
 RETRIES = 4
 
