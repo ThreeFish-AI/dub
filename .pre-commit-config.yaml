@@ -1,0 +1,15 @@
+# 与兄弟仓（vibe-video）同纪律：默认 ruff 配置（无 [tool.ruff]，行长 88），auto-fix 后
+# 提交会被中断——审阅修复内容后 git add -p 重提即可。
+# ruff 钉版 v0.14.5：与 vibe-video 保持同版本，升版须先以 `ruff==<new>` 全量 lint 验证
+# 零误报再动 rev。
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.14.5
+    hooks:
+      - id: ruff
+        name: ruff lint (dub)
+        args: [--fix]
+        files: ^(scripts|tests)/
+      - id: ruff-format
+        name: ruff format (dub)
+        files: ^(scripts|tests)/

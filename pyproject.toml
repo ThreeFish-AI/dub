@@ -1,0 +1,9 @@
+# 仅工具配置（刻意无 [project]）：全部脚本走 `uv run --no-project`，运行期依赖由
+# 各调用点 --with 逐个声明——为一个 CLI 工具引入打包层违反最小干预。
+# 测试运行方式（依赖注入在调用侧）：
+#   uv run --no-project --with pytest --with numpy --with mutagen --with soundfile \
+#       --with fastapi --with httpx --with pydantic --with uvicorn python -m pytest tests -q
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
